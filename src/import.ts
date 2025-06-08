@@ -60,7 +60,7 @@ export class PocketbookCloudHighlightsImporter {
 
     new Notice('Importing ' + books.length + ' books.');
 
-    for (const book of books.slice(0,3)) {
+    for (const book of books) {
       new Notice(`Importing ${book.title}`);
       const highlightIds = await this.api_client.getHighlightIdsForBook(book.fast_hash);
 
@@ -68,9 +68,9 @@ export class PocketbookCloudHighlightsImporter {
       if (highlights.length > 0) {
         const sanitized_book_title = book.title.replace(/[\.#%&{}\\<>*\?/$!'":@+`|=]/g, '');
         if (this.plugin.settings.flat_structure) {
-          this.writeFlatHighlights(book, sanitized_book_title, highlights)
+          await this.writeFlatHighlights(book, sanitized_book_title, highlights);
         } else {
-          this.writeNestedHighlights(book, sanitized_book_title, highlights);
+          await this.writeNestedHighlights(book, sanitized_book_title, highlights);
         }
       }
     }
@@ -148,29 +148,8 @@ export class PocketbookCloudHighlightsImporter {
       highlights.sort((a, b) => +a.quotation?.updated - +b.quotation?.updated);
     }
 
-    let i = 0;
     for (const highlight of highlights) {
-      i++;
-      const highlight_yaml_frontmatter = {
-        id: highlight.uuid,
-        book_id: book.id,
-        book_fast_hash: book.fast_hash,
-        color: highlight.color?.value ?? 'unknown',
-        note: highlight.note?.text ?? '',
-        text: highlight.quotation?.text ?? '',
-        pointer: {
-          begin: highlight.quotation?.begin ?? '',
-          end: highlight.quotation?.end ?? '',
-        },
-        updated: highlight.quotation?.updated,
-        type: 'highlight',
-        plugin: 'pocketbook-cloud-highlights-importer',
-        sort_order: i,
-      };
       const content = // not using multiline strings because they mess up indentation
-        '---\n' +
-        stringifyYaml(highlight_yaml_frontmatter) +
-        '---\n\n' +
         `> [!quote]\n> ${(highlight.quotation?.text ?? '').replace(/\n/g, '\n> ')}\n\n` + //
         (highlight.note?.text ? `> [!note]\n> ${(highlight.note?.text ?? '').replace(/\n/g, '\n> ')}\n` : '');
       await this.writeOrAppendFile(file_name, content);
@@ -207,7 +186,7 @@ export class PocketbookCloudHighlightsImporter {
 
   async appendToFile(file: TFile, content: string) {
     const existingContent = await this.app.vault.read(file);
-    await this.app.vault.modify(file, existingContent + "\n" + content);
+    await this.app.vault.modify(file, existingContent + '\n' + content);
   }
 
 
