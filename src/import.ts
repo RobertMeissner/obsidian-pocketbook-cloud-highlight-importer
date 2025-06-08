@@ -33,7 +33,8 @@ function general_book_content(book: PocketbookCloudBook, folder: string) {
     '`);\n\n' +
     'const result = queryResult.value.values.map(line => "> [!quote]\\n> " + line[0].replace(/\\n/g, "\\n> ") + (line[1] ? "\\n\\n> [!note]\\n> " + line[1].replace(/\\n/g, "\\n> ") : ""))\n\n' +
     'dv.list(result)\n' +
-    '```\n';
+    '```\n' +
+    `Authors: [[${book.metadata.authors}]]\n`;
   return content;
 }
 
