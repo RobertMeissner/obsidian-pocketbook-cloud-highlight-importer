@@ -3,7 +3,7 @@ import { PocketbookCloudApiClient, PocketbookCloudBook, PocketbookCloudLoginClie
 import PocketbookCloudHighlightsImporterPlugin from './main';
 import { PocketbookCloudHighlightsImporterPluginSettings } from './settings';
 
-import CFI from 'epub-cfi-resolver';
+const CFI = require('epub-cfi-resolver');
 
 function dataViewStructure(folder: string, book: PocketbookCloudBook) {
   return (

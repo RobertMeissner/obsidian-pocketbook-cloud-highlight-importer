@@ -112,7 +112,7 @@ export class PocketbookCloudHighlightsImporterSettingTab extends PluginSettingTa
       );
     new Setting(containerEl)
       .setName('Flat structure')
-      .setDesc('Do you want the notes in single files (flat, true) or in a hierarchical folder structure?')
+      .setDesc('Do you want the highlights in a flat or in a nested folder structure? Enable this for flat structure. The nested structure creates separate files for each highlight and uses DataView to aggregate them in the parent file.')
      .addToggle(toggle => {
     toggle
       .setValue(this.plugin.settings.flat_structure)
