@@ -1,11 +1,27 @@
-import { App, Notice, TFile, stringifyYaml } from 'obsidian';
+import { App, Notice, stringifyYaml, TFile } from 'obsidian';
 import { PocketbookCloudApiClient, PocketbookCloudBook, PocketbookCloudLoginClient, PocketbookCloudNote } from './apiclient';
 import PocketbookCloudHighlightsImporterPlugin from './main';
 import { PocketbookCloudHighlightsImporterPluginSettings } from './settings';
 
-const CFI = require('epub-cfi-resolver');
+import CFI from 'epub-cfi-resolver';
 
-function general_book_content(book: PocketbookCloudBook, folder: string) {
+function dataViewStructure(folder: string, book: PocketbookCloudBook) {
+  return (
+    '```dataviewjs\n' +
+    'dv.header(2, dv.current().title)\n' +
+    'const queryResult = await dv.query(`\n' +
+    '  TABLE WITHOUT ID text, note\n' +
+    `  FROM "${folder}/highlights"\n` +
+    `  WHERE book_id="${book.id}" AND type = "highlight" and plugin = "pocketbook-cloud-highlights-importer"\n` +
+    '  SORT sort_order\n' +
+    '`);\n\n' +
+    'const result = queryResult.value.values.map(line => "> [!quote]\\n> " + line[0].replace(/\\n/g, "\\n> ") + (line[1] ? "\\n\\n> [!note]\\n> " + line[1].replace(/\\n/g, "\\n> ") : ""))\n\n' +
+    'dv.list(result)\n' +
+    '```\n'
+  );
+}
+
+function book_frontmatter(book: PocketbookCloudBook) {
   const book_yaml_frontmatter = {
     title: book.title,
     authors: book.metadata.authors,
@@ -19,23 +35,8 @@ function general_book_content(book: PocketbookCloudBook, folder: string) {
     type: 'book',
     plugin: 'pocketbook-cloud-highlights-importer',
   };
-  const content = // not using multiline strings because they mess up indentation
-    '---\n' +
-    stringifyYaml(book_yaml_frontmatter) +
-    '---\n\n' +
-    '```dataviewjs\n' +
-    'dv.header(2, dv.current().title)\n' +
-    'const queryResult = await dv.query(`\n' +
-    '  TABLE WITHOUT ID text, note\n' +
-    `  FROM "${folder}/highlights"\n` +
-    `  WHERE book_id="${book.id}" AND type = "highlight" and plugin = "pocketbook-cloud-highlights-importer"\n` +
-    '  SORT sort_order\n' +
-    '`);\n\n' +
-    'const result = queryResult.value.values.map(line => "> [!quote]\\n> " + line[0].replace(/\\n/g, "\\n> ") + (line[1] ? "\\n\\n> [!note]\\n> " + line[1].replace(/\\n/g, "\\n> ") : ""))\n\n' +
-    'dv.list(result)\n' +
-    '```\n' +
-    `Authors: [[${book.metadata.authors}]]\n`;
-  return content;
+  // not using multiline strings because they mess up indentation
+  return '---\n' + stringifyYaml(book_yaml_frontmatter) + '---\n';
 }
 
 export class PocketbookCloudHighlightsImporter {
@@ -50,7 +51,7 @@ export class PocketbookCloudHighlightsImporter {
       settings.shop_name,
       settings.access_token,
       settings.refresh_token,
-      settings.access_token_valid_until,
+      settings.access_token_valid_until
     );
     this.api_client = new PocketbookCloudApiClient(this.login_client);
   }
@@ -67,7 +68,7 @@ export class PocketbookCloudHighlightsImporter {
 
       const highlights = await Promise.all(highlightIds.map(highlightInfo => this.api_client.getHighlight(highlightInfo.uuid, book.fast_hash)));
       if (highlights.length > 0) {
-        const sanitized_book_title = book.title.replace(/[\.#%&{}\\<>*\?/$!'":@+`|=]/g, '');
+        const sanitized_book_title = book.title.replace(/[.#%&{}\\<>*?/$!'":@+`|=]/g, '');
         if (this.plugin.settings.flat_structure) {
           await this.writeFlatHighlights(book, sanitized_book_title, highlights);
         } else {
@@ -88,8 +89,8 @@ export class PocketbookCloudHighlightsImporter {
     //const cover_filename = `${folder}/cover.jpg`;
     //await this.writeFileBinary(cover_filename, await this.api_client.getBookCover(book));
 
+    const content = book_frontmatter(book) + dataViewStructure(folder, book);
 
-    const content = general_book_content(book, folder);
     await this.writeFile(metadata_filename, content);
 
     //TODO: only create the CFI object once m)
@@ -130,7 +131,6 @@ export class PocketbookCloudHighlightsImporter {
     }
   }
 
-
   private async writeFlatHighlights(book: PocketbookCloudBook, title: string, highlights: PocketbookCloudNote[]) {
     const folder = `${this.settings.import_folder}`;
     await this.createFolder(folder);
@@ -138,7 +138,8 @@ export class PocketbookCloudHighlightsImporter {
     const file_name = `${folder}/${title}.md`;
 
     // write metadata file, which should be used to get all highlights together
-    const content = general_book_content(book, folder);
+    const content = book_frontmatter(book) + `Authors: [[${book.metadata.authors}]]\n`;
+
     await this.writeFile(file_name, content);
 
     //TODO: only create the CFI object once m)
@@ -191,6 +192,7 @@ export class PocketbookCloudHighlightsImporter {
   }
 
 
+  // TODO: Remove, if image not needed, see above: "does not work for now, see API client comment"
   private async writeFileBinary(file_name: string, content: ArrayBuffer) {
     const file = this.app.vault.getAbstractFileByPath(file_name) as TFile;
     if (!file) {
