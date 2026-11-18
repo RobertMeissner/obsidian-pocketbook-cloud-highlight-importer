@@ -66,16 +66,21 @@ export class PocketbookCloudHighlightsImporterSettingTab extends PluginSettingTa
               null,
               new Date()
             );
-            api_client.login();
+            try {
+              await api_client.login();
 
-            this.plugin.settings.access_token = await api_client.getAccessToken();
-            this.plugin.settings.access_token_valid_until = api_client.getAccessTokenValidUntil();
-            this.plugin.settings.refresh_token = await api_client.getRefreshToken();
-            this.plugin.saveSettings();
+              this.plugin.settings.access_token = await api_client.getAccessToken();
+              this.plugin.settings.access_token_valid_until = api_client.getAccessTokenValidUntil();
+              this.plugin.settings.refresh_token = await api_client.getRefreshToken();
+              this.plugin.saveSettings();
 
-            shop_name_text_field.setValue(this.plugin.settings.shop_name);
+              shop_name_text_field.setValue(this.plugin.settings.shop_name);
 
-            new Notice('Logged in successfully');
+              new Notice('Logged in successfully');
+            } catch (error) {
+              console.error('Login failed', error);
+              new Notice('Login failed: ' + (error instanceof Error ? error.message : String(error)));
+            }
           }).open();
         })
       );
