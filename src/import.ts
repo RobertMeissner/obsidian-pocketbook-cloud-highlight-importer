@@ -13,7 +13,7 @@ function general_book_content(book: PocketbookCloudBook, folder: string) {
     year: book.metadata.year,
     id: book.id,
     fast_hash: book.fast_hash,
-    collections: (book.collections ?? '').split(','),
+    collections: Array.isArray(book.collections) ? book.collections : typeof book.collections === 'string' ? book.collections.split(',') : [],
     uploaded_at: book.created_at,
     read_status: book.read_status,
     type: 'book',
