@@ -56,24 +56,31 @@ export class PocketbookCloudHighlightsImporter {
   }
 
   async importHighlights() {
-    new Notice('Importing highlights...');
-    const books = await this.api_client.getBooks();
+    try {
+      new Notice('Importing highlights...');
+      const books = await this.api_client.getBooks();
 
-    new Notice('Importing ' + books.length + ' books.');
+      new Notice('Importing ' + books.length + ' books.');
 
-    for (const book of books) {
-      new Notice(`Importing ${book.title}`);
-      const highlightIds = await this.api_client.getHighlightIdsForBook(book.fast_hash);
+      for (const book of books) {
+        new Notice(`Importing ${book.title}`);
+        const highlightIds = await this.api_client.getHighlightIdsForBook(book.fast_hash);
 
-      const highlights = await Promise.all(highlightIds.map(highlightInfo => this.api_client.getHighlight(highlightInfo.uuid, book.fast_hash)));
-      if (highlights.length > 0) {
-        const sanitized_book_title = book.title.replace(/[\.#%&{}\\<>*\?/$!'":@+`|=]/g, '');
-        if (this.plugin.settings.flat_structure) {
-          await this.writeFlatHighlights(book, sanitized_book_title, highlights);
-        } else {
-          await this.writeNestedHighlights(book, sanitized_book_title, highlights);
+        const highlights = await Promise.all(highlightIds.map(highlightInfo => this.api_client.getHighlight(highlightInfo.uuid, book.fast_hash)));
+        if (highlights.length > 0) {
+          const sanitized_book_title = book.title.replace(/[\.#%&{}\\<>*\?/$!'":@+`|=]/g, '');
+          if (this.plugin.settings.flat_structure) {
+            await this.writeFlatHighlights(book, sanitized_book_title, highlights);
+          } else {
+            await this.writeNestedHighlights(book, sanitized_book_title, highlights);
+          }
         }
       }
+
+      new Notice('Import finished.');
+    } catch (error) {
+      console.error('Importing highlights failed', error);
+      new Notice('Importing highlights failed: ' + (error instanceof Error ? error.message : String(error)));
     }
   }
 
